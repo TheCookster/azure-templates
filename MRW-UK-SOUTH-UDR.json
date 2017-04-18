@@ -1,0 +1,234 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "UA-SOUTH-REMOTE-VNET",
+      "metadata": {
+        "description": "Name for the new VNet."
+      }
+    },
+    "vnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.62.64.0/19",
+      "metadata": {
+        "description": "CIDR prefix for the VNet address space."
+      }
+    },
+    "dmzSubnetName": {
+      "type": "string",
+      "defaultValue": "UA-DMZ",
+      "metadata": {
+        "description": "Name for the DMZ subnet."
+      }
+    },
+    "dmzSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.62.66.0/24",
+      "metadata": {
+        "description": "CIDR address prefix for the DMZ subnet."
+      }
+    },
+    "trustSubnetName": {
+      "type": "string",
+      "defaultValue": "UA-TRUST",
+      "metadata": {
+        "description": "Name for the trust subnet."
+      }
+    },
+    "trustSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.62.84.0/22",
+      "metadata": {
+        "description": "CIDR address prefix for the front end subnet."
+      }
+    },
+    "MGMTSubnetName": {
+      "type": "string",
+      "defaultValue": "UA-MGMT",
+      "metadata": {
+        "description": "Name for the MGMT subnet."
+      }
+    },
+    "MGMTSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.62.64.0/24",
+      "metadata": {
+        "description": "CIDR address prefix for the back end subnet."
+      }
+    "UntrustSubnetName": {
+      "type": "string",
+      "defaultValue": "UA-UNTRUST",
+      "metadata": {
+        "description": "Name for the Untrust subnet."
+      }
+    },
+    "UntrustSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.62.65.0/24",
+      "metadata": {
+        "description": "CIDR address prefix for the back end subnet."
+      }
+    },
+    "DMZNSGName": {
+      "type": "string",
+      "defaultValue": "UA-SOUTH-DMZ-NSG",
+      "metadata": {
+        "description": "Name for the NSG used to allow DMZ traffic."
+      }
+    },
+    "TrustNSGName": {
+      "type": "string",
+      "defaultValue": "UA-SOUTH-TRUST-NSG",
+      "metadata": {
+        "description": "Name for the NSG used to allow Trust traffic."
+      }
+    },
+    "MGMTNSGName": {
+      "type": "string",
+      "defaultValue": "UA-SOUTH-MGMT-NSG",
+      "metadata": {
+        "description": "Name for the NSG used to allow MGMT traffic."
+      }
+    },
+    "UntrustNSGName": {
+      "type": "string",
+      "defaultValue": "UA-SOUTH-UNTRUST-NSG",
+      "metadata": {
+        "description": "Name for the NSG used to allow MGMT traffic."
+      }
+    },
+    "vmaIpAddress": {
+      "type": "string",
+      "defaultValue": "10.62.84.1",
+      "metadata": {
+        "description": "IP address for virtual appliance."
+      }
+    },
+    "DMZRouteTableName": {
+      "type": "string",
+      "defaultValue": "UDR-DMZ",
+      "metadata": {
+        "description": "Name for DMZ subnet route table."
+      }
+    },
+    "MGMTRouteTableName": {
+      "type": "string",
+      "defaultValue": "UDR-MGMT",
+      "metadata": {
+        "description": "Name for MGMT subnet route table."
+      }
+    },
+    "TrustRouteTableName": {
+      "type": "string",
+      "defaultValue": "UDR-TRUST",
+      "metadata": {
+        "description": "Name for TRUST subnet route table."
+      }
+    },
+    "UntrustRouteTableName": {
+      "type": "string",
+      "defaultValue": "UDR-UNTRUST",
+      "metadata": {
+        "description": "Name for UNTRUST subnet route table."
+      }
+    },    
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/routeTables",
+      "name": "[parameters('DMZRouteTableName')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "displayName": "Route Table - DMZ"
+      },
+      "properties": {
+        "routes": [
+          {
+            "name": "RouteToDMZ",
+            "properties": {
+              "addressPrefix": "[parameters('DMZSubnetPrefix')]",
+              "nextHopType": "VirtualAppliance",
+              "nextHopIpAddress": "[parameters('vmaIpAddress')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/routeTables",
+      "name": "[parameters('MGMTRouteTableName')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "displayName": "UDR - MGMT"
+      },
+      "properties": {
+        "routes": [
+          {
+            "name": "RouteToMGMT",
+            "properties": {
+              "addressPrefix": "[parameters('MGMTSubnetPrefix')]",
+              "nextHopType": "VirtualAppliance",
+              "nextHopIpAddress": "[parameters('vmaIpAddress')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[parameters('vnetName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkSecurityGroups/', parameters('DMZNSGName'))]",
+        "[concat('Microsoft.Network/networkSecurityGroups/', parameters('MGMTNSGName'))]",
+        "[concat('Microsoft.Network/routeTables/', parameters('DMZRouteTableName'))]",
+        "[concat('Microsoft.Network/routeTables/', parameters('MGMTRouteTableName'))]"
+      ],
+      "tags": {
+        "displayName": "VNet"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnetPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('dmzSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('dmzSubnetPrefix')]"
+            }
+          },
+          {
+            "name": "[parameters('DMZSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('DMZSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('DMZNSGName'))]"
+              },
+              "routeTable": {
+                  "id": "[resourceId('Microsoft.Network/routeTables', parameters('DMZRouteTableName'))]"
+              }
+            }
+          },
+          {
+            "name": "[parameters('MGMTSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('MGMTSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('MGMTNSGName'))]"
+              },
+              "routeTable": {
+                  "id": "[resourceId('Microsoft.Network/routeTables', parameters('MGMTRouteTableName'))]"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+  }
